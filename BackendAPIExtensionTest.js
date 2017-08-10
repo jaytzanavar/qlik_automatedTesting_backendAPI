@@ -86,7 +86,7 @@ define(["qlik", "jquery", "text!./style.css", "text!./template.html"], function 
                 qMeasures: [],
                 qInitialDataFetch: [{
                     qWidth: 10,
-                    qHeight: 5
+                    qHeight: 20
                 }]
             }
         },
@@ -100,7 +100,7 @@ define(["qlik", "jquery", "text!./style.css", "text!./template.html"], function 
                 },
                 measures: {
                     uses: "measures",
-                    min: 0
+                    min: 1
                 },
                 sorting: {
                     uses: "sorting"
@@ -136,6 +136,8 @@ define(["qlik", "jquery", "text!./style.css", "text!./template.html"], function 
             currAppWithThis = (currAppWithThis) ? currAppWithThis : qlik.currApp(this);
 
 
+
+
             queueTest("getData", function () {
                 var t = benchmark();
                 var me = this;
@@ -159,7 +161,7 @@ define(["qlik", "jquery", "text!./style.css", "text!./template.html"], function 
                             });
                             //Verify that the new total length is 7
                             if(totalLength === 7){
-                                okTest(me.id, me.desc, t.finish())
+                                okTest(me.id, me.desc, t.finish());
                                 dfd.resolve();
                             } else {
                                 failTest(me.id, me.desc, t.finish(), "Fetched dataafter getData method === " + totalLength + ", expected 7");
@@ -298,75 +300,114 @@ define(["qlik", "jquery", "text!./style.css", "text!./template.html"], function 
                });
 
 
-             queueTest(" selectRange ",function () { 
-                    var t = benchmark();
-                    var me = this;
-                    var dfd = qlik.Promise.defer();
-
-                    var dataPages=layout.qHyperCube;
-
-                    var listener= function() {
-                        if(currApp.selectionState().selection.length > 0) {
-                            okTest(me.id , me.desc , t.finish());
-                        }
-                        else {
-                            failTest( me.id , me.desc , t.finish() , " Select Range was not possible to be applied ");
-                        }
-
-                         dfd.resolve(); 
-                    };
-
-                    var range = {
-                        "qMeasureIx": 1,
-                        "qRange": {
-                            "qMin": 1,
-                            "qMax":5,
-                            "qMinInclEq": true,
-                            "qMaxInclEq": true
-                        }
-                    };
-                    console.log(backendApi.selectRange( [range], false));
-
-                   
-                    //    currApp.selectionState().clearAll(true).then( function () {
-                    //     currApp.selectionState().OnData.bind( listener ); //binding the listener
-                    //     console.log(dataPages);
-                    //     var header = qlik.table( dataPages).headers[3]; //make the selection of 3d header
-                    //     console.log(header);
-                    //     backendApi.selectRange(header.qMin, header.qMax);
-                    // } );
-
-                   
-                    return dfd.promise;
-
-
+             queueTest(" selectRange ",function () {
+                 // var t = benchmark();
+                 // var me = this;
+                 // var dfd = qlik.Promise.defer();
+                 // var dataPages=layout.qHyperCube;
+                 // let selectionState=currApp.selectionState();
+                 // console.log(selectionState);
+                 //
+                 // var listener= function() {
+                 //     var range = {
+                 //         "qMeasureIx": 0,
+                 //         "qRange": {
+                 //             "qMin": 0,
+                 //             "qMax": 1,
+                 //             "qMinInclEq": true
+                 //         }
+                 //     };
+                 //     backendApi.selectRange( [range],true ).then(function(promice){
+                 //
+                 //
+                 //         if(selectionState.selections.length > 0) {
+                 //             okTest(me.id , me.desc , t.finish());
+                 //         }
+                 //         else {
+                 //             failTest( me.id , me.desc , t.finish() , " Select Range was not possible to be applied ");
+                 //         }
+                 //         selectionState.OnData.unbind( listener );
+                 //         selectionState.clearAll();
+                 //         dfd.resolve();
+                 //     });
+                 // };
+                 //
+                 // selectionState.OnData.bind( listener );
+                 //
+                 // return dfd.promise;
 
 
              });
+
+            queueTest(" getReducedData ",function () {
+                var t = benchmark();
+                var me = this;
+                var dfd = qlik.Promise.defer();
+                var dataPages = layout.qHyperCube.qDataPages;
+
+               var requestPage = [{
+                   qTop: 0,
+                   qLeft: 0,
+                   qWidth: 2,
+                   qHeight:5
+               }];
+
+               var topLength = requestPage[0].qHeight;
+
+               backendApi.getReducedData(requestPage , 0 , "D1").then(function (dataPagesFunc){ //is reduced accordibng to the dimensions number 2^0 zoom factor
+                   for( let i = 0; i< topLength; i++) {
+                       if( dataPages[0].qMatrix[0].qText ===  dataPagesFunc[0].qMatrix[0].qText) { //check the reduced tables if it is consist with the hypercube
+                           okTest(me.id , me.desc , t.finish());
+                       }
+                       else {
+                           failTest(me.id, me.desc, t.finish(), "reduced Hypercube qText is "+ dataPagesFunc.qMatrix[0][0].qText +", expected " + dataPages.qMatrix[0][0].qText);
+                       }
+
+                   }
+                   dfd.resolve();
+               });
+                return dfd.promise;
+
+
+
+            });
+
+
+            queueTest(" getStackedData ",function () {
+                var t = benchmark();
+                var me = this;
+                var dfd = qlik.Promise.defer();
+                var dataPages=layout.qHyperCube;
+                let selectionState=currApp.selectionState();
+
+
+
+
+                if(selectionState.selections.length > 0) {
+                    okTest(me.id , me.desc , t.finish());
+                }
+                else {
+                    failTest( me.id , me.desc , t.finish() , "getStackedData ");
+                }
+
+                dfd.resolve();
+
+                return dfd.promise;
+
+
+            });
+
 
 
             runTests();
             return qlik.Promise.resolve();
               
         },
-        controller: ['$scope', function (/*$scope*/) {
+        controller: ["$scope", function (/*$scope*/) {
         }]
     };
 });
 
 
-/** Fill with all available rows, add  */
-function fillWithRows(me){
-    var rowCount = me.backendApi.getRowCount();
-    var requestPage = [{
-        qTop: me.$element.find(".infoSquare").length,
-        qLeft: 0,
-        qWidth: 4,
-        qHeight: 5000
-    }];
-    me.backendApi.getData(requestPage).then(function () {
-        me.paint(me);
-    });
-    addInfoBox(me.backendApi.getRowCount());
-}
+
 
